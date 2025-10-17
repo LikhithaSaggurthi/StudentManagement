@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Student Management System</h1>
+        </header>
+        
+        <div class="form-section">
+            <h2 id="form-title">Add New Student</h2>
+            <form id="student-form">
+                <input type="hidden" id="student-id">
+                <div class="form-group">
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" required minlength="2" maxlength="50" pattern="[A-Za-z\s]+" title="Name should contain only letters and spaces">
+                </div>
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" required maxlength="100" title="Please enter a valid email address">
+                </div>
+                <div class="form-group">
+                    <label for="course">Course:</label>
+                    <input type="text" id="course" required minlength="2" maxlength="50" title="Course name is required">
+                </div>
+                <div class="form-group">
+                    <label for="age">Age:</label>
+                    <input type="number" id="age" min="16" max="100" required title="Age must be between 16 and 100">
+                </div>
+                <div class="form-buttons">
+                    <button type="submit" id="submit-btn">Add Student</button>
+                    <button type="button" id="cancel-btn" onclick="resetForm()">Cancel</button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="table-section">
+            <h2>Students List</h2>
+            <table id="students-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Course</th>
+                        <th>Age</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="students-tbody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
