@@ -17,12 +17,8 @@
             <form id="student-form">
                 <input type="hidden" id="student-id">
                 <div class="form-group">
-                    <label for="rollNumber">Roll Number:</label>
-                    <input type="text" id="rollNumber" required minlength="3" maxlength="20" title="Roll number is required">
-                </div>
-                <div class="form-group">
                     <label for="name">Name:</label>
-                    <input type="text" id="name" required minlength="2" maxlength="50" title="Name is required">
+                    <input type="text" id="name" required minlength="2" maxlength="50" pattern="[A-Za-z\s]+" title="Name should contain only letters and spaces">
                 </div>
                 <div class="form-group">
                     <label for="email">Email:</label>
@@ -30,13 +26,11 @@
                 </div>
                 <div class="form-group">
                     <label for="course">Course:</label>
-                    <select id="course" required title="Please select a course">
-                        <option value="">Select Course</option>
-                    </select>
+                    <input type="text" id="course" required minlength="2" maxlength="50" title="Course name is required">
                 </div>
                 <div class="form-group">
                     <label for="age">Age:</label>
-                    <input type="number" id="age" min="16" max="25" required title="Age must be between 16 and 25">
+                    <input type="number" id="age" min="16" max="100" required title="Age must be between 16 and 100">
                 </div>
                 <div class="form-buttons">
                     <button type="submit" id="submit-btn">Add Student</button>
@@ -51,7 +45,6 @@
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Roll Number</th>
                         <th>Name</th>
                         <th>Email</th>
                         <th>Course</th>

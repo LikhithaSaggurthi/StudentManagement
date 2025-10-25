@@ -1,9 +1,7 @@
-const API_URL = 'http://localhost:7000/api/students';
-const COURSES_URL = 'http://localhost:7000/api/courses';
+const API_URL = 'http://localhost:8080/api/students';
 let isEditing = false;
 
 document.addEventListener('DOMContentLoaded', function() {
-    loadCourses();
     loadStudents();
     
     document.getElementById('student-form').addEventListener('submit', function(e) {
@@ -14,42 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
             addStudent();
         }
     });
-    
-    // Add input validation for name field (no numbers)
-    document.getElementById('name').addEventListener('input', function(e) {
-        const value = e.target.value;
-        // Remove any numbers from the name field
-        e.target.value = value.replace(/[0-9]/g, '');
-    });
-    
-    // Add input validation for age field (only numbers)
-    document.getElementById('age').addEventListener('input', function(e) {
-        const value = e.target.value;
-        // Remove any non-numeric characters
-        e.target.value = value.replace(/[^0-9]/g, '');
-    });
 });
-
-async function loadCourses() {
-    try {
-        const response = await fetch(COURSES_URL);
-        const courses = await response.json();
-        const courseSelect = document.getElementById('course');
-        
-        // Clear existing options except the first one
-        courseSelect.innerHTML = '<option value="">Select Course</option>';
-        
-        courses.forEach(course => {
-            const option = document.createElement('option');
-            option.value = course.id;
-            option.textContent = course.courseName;
-            courseSelect.appendChild(option);
-        });
-    } catch (error) {
-        console.error('Error loading courses:', error);
-        alert('Error loading courses. Please check if the server is running.');
-    }
-}
 
 async function loadStudents() {
     try {
@@ -70,7 +33,6 @@ function displayStudents(students) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${student.id}</td>
-            <td>${student.rollNumber}</td>
             <td>${student.name}</td>
             <td>${student.email}</td>
             <td>${student.course}</td>
@@ -91,14 +53,20 @@ async function addStudent() {
     
     const student = getFormData();
     
-    // Check for duplicate roll number on client side
+    // Check for duplicates on client side
     try {
         const response = await fetch(API_URL);
         const existingStudents = await response.json();
         
-        const duplicateRollNumber = existingStudents.find(s => s.rollNumber.toLowerCase() === student.rollNumber.toLowerCase());
-        if (duplicateRollNumber) {
-            alert('Student with this roll number already exists!');
+        const duplicateEmail = existingStudents.find(s => s.email.toLowerCase() === student.email.toLowerCase());
+        if (duplicateEmail) {
+            alert('Student with this email already exists!');
+            return;
+        }
+        
+        const duplicateName = existingStudents.find(s => s.name.toLowerCase() === student.name.toLowerCase());
+        if (duplicateName) {
+            alert('Student with this name already exists!');
             return;
         }
     } catch (error) {
@@ -138,17 +106,16 @@ async function editStudent(id) {
         const student = await response.json();
         
         document.getElementById('student-id').value = student.id;
-        document.getElementById('rollNumber').value = student.rollNumber;
         document.getElementById('name').value = student.name;
         document.getElementById('email').value = student.email;
-        document.getElementById('course').value = student.courseId;
+        document.getElementById('course').value = student.course;
         document.getElementById('age').value = student.age;
         
         document.getElementById('form-title').textContent = 'Edit Student';
         document.getElementById('submit-btn').textContent = 'Update Student';
         isEditing = true;
         
-        document.getElementById('rollNumber').focus();
+        document.getElementById('name').focus();
     } catch (error) {
         console.error('Error loading student:', error);
         alert('Error loading student data.');
@@ -163,14 +130,20 @@ async function updateStudent() {
     const id = document.getElementById('student-id').value;
     const student = getFormData();
     
-    // Check for duplicate roll number on client side (excluding current student)
+    // Check for duplicates on client side (excluding current student)
     try {
         const response = await fetch(API_URL);
         const existingStudents = await response.json();
         
-        const duplicateRollNumber = existingStudents.find(s => s.id != id && s.rollNumber.toLowerCase() === student.rollNumber.toLowerCase());
-        if (duplicateRollNumber) {
-            alert('Student with this roll number already exists!');
+        const duplicateEmail = existingStudents.find(s => s.id != id && s.email.toLowerCase() === student.email.toLowerCase());
+        if (duplicateEmail) {
+            alert('Student with this email already exists!');
+            return;
+        }
+        
+        const duplicateName = existingStudents.find(s => s.id != id && s.name.toLowerCase() === student.name.toLowerCase());
+        if (duplicateName) {
+            alert('Student with this name already exists!');
             return;
         }
     } catch (error) {
@@ -225,25 +198,18 @@ async function deleteStudent(id) {
 }
 
 function validateForm() {
-    const rollNumber = document.getElementById('rollNumber').value.trim();
     const name = document.getElementById('name').value.trim();
     const email = document.getElementById('email').value.trim();
-    const courseId = document.getElementById('course').value;
+    const course = document.getElementById('course').value.trim();
     const age = document.getElementById('age').value;
     
-    // Roll number validation
-    if (!rollNumber || rollNumber.length < 3) {
-        alert('Roll number must be at least 3 characters long');
-        return false;
-    }
-    
-    // Name validation - no numbers allowed
+    // Name validation
     if (!name || name.length < 2) {
         alert('Name must be at least 2 characters long');
         return false;
     }
-    if (/[0-9]/.test(name)) {
-        alert('Name should not contain numbers');
+    if (!/^[A-Za-z\s]+$/.test(name)) {
+        alert('Name should contain only letters and spaces');
         return false;
     }
     
@@ -259,18 +225,14 @@ function validateForm() {
     }
     
     // Course validation
-    if (!courseId) {
-        alert('Please select a course');
+    if (!course || course.length < 2) {
+        alert('Course name must be at least 2 characters long');
         return false;
     }
     
-    // Age validation - only numbers allowed
-    if (!age || age < 16 || age > 25) {
-        alert('Age must be between 16 and 25');
-        return false;
-    }
-    if (!/^[0-9]+$/.test(age)) {
-        alert('Age should contain only numbers');
+    // Age validation
+    if (!age || age < 16 || age > 100) {
+        alert('Age must be between 16 and 100');
         return false;
     }
     
@@ -279,10 +241,9 @@ function validateForm() {
 
 function getFormData() {
     return {
-        rollNumber: document.getElementById('rollNumber').value.trim(),
         name: document.getElementById('name').value.trim(),
         email: document.getElementById('email').value.trim(),
-        courseId: parseInt(document.getElementById('course').value),
+        course: document.getElementById('course').value.trim(),
         age: parseInt(document.getElementById('age').value)
     };
 }
