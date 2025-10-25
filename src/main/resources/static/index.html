@@ -35,8 +35,12 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="age">Age:</label>
-                    <input type="number" id="age" min="16" max="25" required title="Age must be between 16 and 25">
+                    <label for="dateOfBirth">Date of Birth:</label>
+                    <input type="date" id="dateOfBirth" required title="Select date of birth">
+                </div>
+                <div class="form-group">
+                    <label for="phoneNumber">Phone Number:</label>
+                    <input type="tel" id="phoneNumber" pattern="[1-9][0-9]{9}" maxlength="10" required title="Phone number must be 10 digits and cannot start with 0">
                 </div>
                 <div class="form-buttons">
                     <button type="submit" id="submit-btn">Add Student</button>
@@ -46,16 +50,22 @@
         </div>
         
         <div class="table-section">
-            <h2>Students List</h2>
+            <div class="table-header">
+                <h2>Students List</h2>
+                <div class="search-container">
+                    <input type="text" id="search-input" placeholder="Search students..." onkeyup="searchStudents()">
+                    <span class="search-icon">⌕</span>
+                </div>
+            </div>
             <table id="students-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Roll Number</th>
                         <th>Name</th>
                         <th>Email</th>
                         <th>Course</th>
-                        <th>Age</th>
+                        <th>Date of Birth</th>
+                        <th>Phone Number</th>
                         <th>Actions</th>
                     </tr>
                 </thead>

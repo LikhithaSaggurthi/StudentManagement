@@ -10,18 +10,17 @@ public class StudentWebApp {
     private static final String DB_PASSWORD = "sasql";
     
     static class Student {
-        int id;
-        String rollNumber, name, email, course;
-        int age, courseId;
+        int id, courseId;
+        String rollNumber, name, email, course, dateOfBirth, phoneNumber;
         
-        Student(int id, String rollNumber, String name, String email, String course, int age, int courseId) {
+        Student(int id, String rollNumber, String name, String email, String course, String dateOfBirth, String phoneNumber, int courseId) {
             this.id = id; this.rollNumber = rollNumber; this.name = name; this.email = email; 
-            this.course = course; this.age = age; this.courseId = courseId;
+            this.course = course; this.dateOfBirth = dateOfBirth; this.phoneNumber = phoneNumber; this.courseId = courseId;
         }
         
         String toJson() {
-            return String.format("{\"id\":%d,\"rollNumber\":\"%s\",\"name\":\"%s\",\"email\":\"%s\",\"course\":\"%s\",\"age\":%d,\"courseId\":%d}", 
-                id, rollNumber, name, email, course, age, courseId);
+            return String.format("{\"id\":%d,\"rollNumber\":\"%s\",\"name\":\"%s\",\"email\":\"%s\",\"course\":\"%s\",\"dateOfBirth\":\"%s\",\"phoneNumber\":\"%s\",\"courseId\":%d}", 
+                id, rollNumber, name, email, course, dateOfBirth, phoneNumber, courseId);
         }
     }
     
@@ -69,9 +68,12 @@ public class StudentWebApp {
                 "course_name VARCHAR(100) NOT NULL UNIQUE)");
             
             // Insert courses
-            String[] courses = {"Computers", "Mathematics", "Science", "ECE", "EEE", 
-                               "Mechanical", "Artificial Intelligence", "Data Science", 
-                               "Machine Learning", "Cyber Security", "Block Chain"};
+            String[] courses = {"Computer Science and Engineering (CSE)", "Information Technology (IT)", 
+                               "Artificial Intelligence (AI)", "Data Science (DS)", "Machine Learning (ML)", 
+                               "Internet of Things (IOT)", "Civil Engineering (CE)", 
+                               "Electronics and Communication Engineering (ECE)", 
+                               "Electrical and Electronics Engineering (EEE)", "Mechanical Engineering (ME)", 
+                               "Cyber Security", "Block Chain Technology"};
             
             PreparedStatement stmt = conn.prepareStatement(
                 "INSERT INTO courses (course_name) VALUES (?) ON CONFLICT (course_name) DO NOTHING");
@@ -88,7 +90,8 @@ public class StudentWebApp {
                 "name VARCHAR(50) NOT NULL, " +
                 "email VARCHAR(100) UNIQUE NOT NULL, " +
                 "course_id INTEGER REFERENCES courses(id), " +
-                "age INTEGER CHECK (age >= 16 AND age <= 25), " +
+                "date_of_birth DATE NOT NULL, " +
+                "phone_number VARCHAR(15) NOT NULL, " +
                 "is_deleted INTEGER DEFAULT 0 CHECK (is_deleted IN (0, 1)), " +
                 "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
             
@@ -163,6 +166,16 @@ public class StudentWebApp {
         }
     }
     
+    // Helper method to format date from yyyy-mm-dd to dd-mm-yyyy
+    private static String formatDateForDisplay(String dbDate) {
+        if (dbDate == null) return "";
+        String[] parts = dbDate.split("-");
+        if (parts.length == 3) {
+            return parts[2] + "-" + parts[1] + "-" + parts[0];
+        }
+        return dbDate;
+    }
+    
     static class StudentHandler implements HttpHandler {
         public void handle(HttpExchange exchange) throws IOException {
             exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
@@ -201,7 +214,7 @@ public class StudentWebApp {
         
         private void handleGetAll(HttpExchange exchange) throws IOException {
             try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
-                String query = "SELECT s.id, s.roll_number, s.name, s.email, c.course_name, s.age, s.course_id " +
+                String query = "SELECT s.id, s.roll_number, s.name, s.email, c.course_name, s.date_of_birth, s.phone_number, s.course_id " +
                               "FROM students s JOIN courses c ON s.course_id = c.id WHERE s.is_deleted = 0 ORDER BY s.id";
                 ResultSet rs = conn.createStatement().executeQuery(query);
                 StringBuilder json = new StringBuilder("[");
@@ -209,7 +222,8 @@ public class StudentWebApp {
                 while (rs.next()) {
                     if (!first) json.append(",");
                     json.append(new Student(rs.getInt("id"), rs.getString("roll_number"), rs.getString("name"), 
-                        rs.getString("email"), rs.getString("course_name"), rs.getInt("age"), rs.getInt("course_id")).toJson());
+                        rs.getString("email"), rs.getString("course_name"), formatDateForDisplay(rs.getString("date_of_birth")), 
+                        rs.getString("phone_number"), rs.getInt("course_id")).toJson());
                     first = false;
                 }
                 json.append("]");
@@ -222,14 +236,15 @@ public class StudentWebApp {
         private void handleGetById(HttpExchange exchange, String path) throws IOException {
             int id = Integer.parseInt(path.substring(path.lastIndexOf("/") + 1));
             try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
-                String query = "SELECT s.id, s.roll_number, s.name, s.email, c.course_name, s.age, s.course_id " +
+                String query = "SELECT s.id, s.roll_number, s.name, s.email, c.course_name, s.date_of_birth, s.phone_number, s.course_id " +
                               "FROM students s JOIN courses c ON s.course_id = c.id WHERE s.id = ? AND s.is_deleted = 0";
                 PreparedStatement stmt = conn.prepareStatement(query);
                 stmt.setInt(1, id);
                 ResultSet rs = stmt.executeQuery();
                 if (rs.next()) {
                     sendResponse(exchange, 200, new Student(rs.getInt("id"), rs.getString("roll_number"), rs.getString("name"), 
-                        rs.getString("email"), rs.getString("course_name"), rs.getInt("age"), rs.getInt("course_id")).toJson());
+                        rs.getString("email"), rs.getString("course_name"), formatDateForDisplay(rs.getString("date_of_birth")), 
+                        rs.getString("phone_number"), rs.getInt("course_id")).toJson());
                 } else {
                     sendResponse(exchange, 404, "{\"error\":\"Student not found\"}");
                 }
@@ -241,9 +256,9 @@ public class StudentWebApp {
         private void handlePost(HttpExchange exchange) throws IOException {
             Map<String, String> params = parseJson(readBody(exchange));
             String rollNumber = params.get("rollNumber"), name = params.get("name"), email = params.get("email"), 
-                   courseIdStr = params.get("courseId"), ageStr = params.get("age");
+                   courseIdStr = params.get("courseId"), dateOfBirth = params.get("dateOfBirth"), phoneNumber = params.get("phoneNumber");
             
-            if (rollNumber != null && name != null && email != null && courseIdStr != null && ageStr != null) {
+            if (rollNumber != null && name != null && email != null && courseIdStr != null && dateOfBirth != null && phoneNumber != null) {
                 try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
                     // Check for duplicate roll number
                     PreparedStatement checkStmt = conn.prepareStatement(
@@ -252,17 +267,40 @@ public class StudentWebApp {
                     ResultSet rs = checkStmt.executeQuery();
                     
                     if (rs.next() && rs.getInt(1) > 0) {
-                        sendResponse(exchange, 400, "{\"error\":\"Student with this roll number already exists\"}");
+                        sendResponse(exchange, 400, "{\"error\":\"Roll number already exists. Please use a different roll number.\"}");
                         return;
                     }
                     
-                    String insertQuery = "INSERT INTO students (roll_number, name, email, course_id, age) VALUES (?, ?, ?, ?, ?) RETURNING *";
+                    // Check for duplicate email
+                    PreparedStatement emailCheckStmt = conn.prepareStatement(
+                        "SELECT COUNT(*) FROM students WHERE email = ? AND is_deleted = 0");
+                    emailCheckStmt.setString(1, email);
+                    ResultSet emailRs = emailCheckStmt.executeQuery();
+                    
+                    if (emailRs.next() && emailRs.getInt(1) > 0) {
+                        sendResponse(exchange, 400, "{\"error\":\"Email already exists. Please use a different email address.\"}");
+                        return;
+                    }
+                    
+                    // Check for duplicate phone number
+                    PreparedStatement phoneCheckStmt = conn.prepareStatement(
+                        "SELECT COUNT(*) FROM students WHERE phone_number = ? AND is_deleted = 0");
+                    phoneCheckStmt.setString(1, phoneNumber);
+                    ResultSet phoneRs = phoneCheckStmt.executeQuery();
+                    
+                    if (phoneRs.next() && phoneRs.getInt(1) > 0) {
+                        sendResponse(exchange, 400, "{\"error\":\"Phone number already exists. Please use a different phone number.\"}");
+                        return;
+                    }
+                    
+                    String insertQuery = "INSERT INTO students (roll_number, name, email, course_id, date_of_birth, phone_number) VALUES (?, ?, ?, ?, ?, ?) RETURNING *";
                     PreparedStatement stmt = conn.prepareStatement(insertQuery);
                     stmt.setString(1, rollNumber);
                     stmt.setString(2, name);
                     stmt.setString(3, email);
                     stmt.setInt(4, Integer.parseInt(courseIdStr));
-                    stmt.setInt(5, Integer.parseInt(ageStr));
+                    stmt.setDate(5, java.sql.Date.valueOf(dateOfBirth));
+                    stmt.setString(6, phoneNumber);
                     
                     ResultSet result = stmt.executeQuery();
                     if (result.next()) {
@@ -274,7 +312,7 @@ public class StudentWebApp {
                         
                         sendResponse(exchange, 201, new Student(result.getInt("id"), result.getString("roll_number"), 
                             result.getString("name"), result.getString("email"), courseName, 
-                            result.getInt("age"), result.getInt("course_id")).toJson());
+                            formatDateForDisplay(result.getString("date_of_birth")), result.getString("phone_number"), result.getInt("course_id")).toJson());
                     }
                 } catch (SQLException e) {
                     sendResponse(exchange, 400, "{\"error\":\"Database error: " + e.getMessage() + "\"}");
@@ -288,9 +326,9 @@ public class StudentWebApp {
             int id = Integer.parseInt(path.substring(path.lastIndexOf("/") + 1));
             Map<String, String> params = parseJson(readBody(exchange));
             String rollNumber = params.get("rollNumber"), name = params.get("name"), email = params.get("email"), 
-                   courseIdStr = params.get("courseId"), ageStr = params.get("age");
+                   courseIdStr = params.get("courseId"), dateOfBirth = params.get("dateOfBirth"), phoneNumber = params.get("phoneNumber");
             
-            if (rollNumber != null && name != null && email != null && courseIdStr != null && ageStr != null) {
+            if (rollNumber != null && name != null && email != null && courseIdStr != null && dateOfBirth != null && phoneNumber != null) {
                 try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
                     // Check for duplicate roll number (excluding current student)
                     PreparedStatement checkStmt = conn.prepareStatement(
@@ -300,18 +338,43 @@ public class StudentWebApp {
                     ResultSet rs = checkStmt.executeQuery();
                     
                     if (rs.next() && rs.getInt(1) > 0) {
-                        sendResponse(exchange, 400, "{\"error\":\"Student with this roll number already exists\"}");
+                        sendResponse(exchange, 400, "{\"error\":\"Roll number already exists. Please use a different roll number.\"}");
                         return;
                     }
                     
-                    String updateQuery = "UPDATE students SET roll_number = ?, name = ?, email = ?, course_id = ?, age = ? WHERE id = ? AND is_deleted = 0 RETURNING *";
+                    // Check for duplicate email (excluding current student)
+                    PreparedStatement emailCheckStmt = conn.prepareStatement(
+                        "SELECT COUNT(*) FROM students WHERE email = ? AND id != ? AND is_deleted = 0");
+                    emailCheckStmt.setString(1, email);
+                    emailCheckStmt.setInt(2, id);
+                    ResultSet emailRs = emailCheckStmt.executeQuery();
+                    
+                    if (emailRs.next() && emailRs.getInt(1) > 0) {
+                        sendResponse(exchange, 400, "{\"error\":\"Email already exists. Please use a different email address.\"}");
+                        return;
+                    }
+                    
+                    // Check for duplicate phone number (excluding current student)
+                    PreparedStatement phoneCheckStmt = conn.prepareStatement(
+                        "SELECT COUNT(*) FROM students WHERE phone_number = ? AND id != ? AND is_deleted = 0");
+                    phoneCheckStmt.setString(1, phoneNumber);
+                    phoneCheckStmt.setInt(2, id);
+                    ResultSet phoneRs = phoneCheckStmt.executeQuery();
+                    
+                    if (phoneRs.next() && phoneRs.getInt(1) > 0) {
+                        sendResponse(exchange, 400, "{\"error\":\"Phone number already exists. Please use a different phone number.\"}");
+                        return;
+                    }
+                    
+                    String updateQuery = "UPDATE students SET roll_number = ?, name = ?, email = ?, course_id = ?, date_of_birth = ?, phone_number = ? WHERE id = ? AND is_deleted = 0 RETURNING *";
                     PreparedStatement stmt = conn.prepareStatement(updateQuery);
                     stmt.setString(1, rollNumber);
                     stmt.setString(2, name);
                     stmt.setString(3, email);
                     stmt.setInt(4, Integer.parseInt(courseIdStr));
-                    stmt.setInt(5, Integer.parseInt(ageStr));
-                    stmt.setInt(6, id);
+                    stmt.setDate(5, java.sql.Date.valueOf(dateOfBirth));
+                    stmt.setString(6, phoneNumber);
+                    stmt.setInt(7, id);
                     
                     ResultSet result = stmt.executeQuery();
                     if (result.next()) {
@@ -323,7 +386,7 @@ public class StudentWebApp {
                         
                         sendResponse(exchange, 200, new Student(result.getInt("id"), result.getString("roll_number"), 
                             result.getString("name"), result.getString("email"), courseName, 
-                            result.getInt("age"), result.getInt("course_id")).toJson());
+                            formatDateForDisplay(result.getString("date_of_birth")), result.getString("phone_number"), result.getInt("course_id")).toJson());
                     } else {
                         sendResponse(exchange, 404, "{\"error\":\"Student not found\"}");
                     }
